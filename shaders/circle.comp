@@ -1,0 +1,29 @@
+#version 450
+
+// Swapchain image bound at binding = 0
+layout(binding = 0, rgba8) uniform writeonly image2D img;
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+void main() {
+    ivec2 size = imageSize(img);
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+
+    if (pixel.x >= size.x || pixel.y >= size.y) {
+        return; // out of bounds
+    }
+
+    // Normalize coords to [0,1]
+    vec2 uv = vec2(pixel) / vec2(size);
+    vec2 center = vec2(0.5, 0.5);
+    float dist = distance(uv, center);
+
+    vec4 color;
+    if (dist < 0.3) {
+        color = vec4(1.0, 0.0, 0.0, 1.0); // red circle
+    } else {
+        color = vec4(0.0, 0.0, 1.0, 1.0); // blue square background
+    }
+
+    imageStore(img, pixel, color);
+}
