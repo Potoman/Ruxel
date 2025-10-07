@@ -7,7 +7,17 @@ layout(push_constant) uniform PushConstants {
 } pc;
 
 layout(set = 0, binding = 0, rgba8) uniform writeonly image2D img;
-layout(set = 1, binding = 0, rgba32ui) readonly uniform uimage3D voxelImage;
+layout(set = 1, binding = 0, rgba8ui) readonly uniform uimage3D voxelImage;
+
+bool is_collide(float x, float y) {
+    int column = int(x / (1.0 / 4.0));
+    int row = int(y / (1.0 / 4.0));
+
+    ivec3 texel_coord = ivec3(column, row, 0);
+    uvec4 texel = imageLoad(voxelImage, texel_coord);
+
+    return bool(texel.r != 0);
+}
 
 void main() {
     ivec2 size = imageSize(img);
@@ -26,10 +36,17 @@ void main() {
     float dist = distance(uv, center);
 
     vec4 color;
+    float blue;
     if (dist < pc.radius) {
-        color = vec4(texel[0], 0.0, 0.0, 1.0); // red circle
+        blue = float(texel[0]);
     } else {
-        color = vec4(0.0, 0.0, 1.0, 1.0); // blue square background
+        blue = 0.0;
+    }
+
+    if (is_collide(uv[0], uv[1])) {
+        color = vec4(1.0, 0.0, blue, 1.0); // blue square background
+    } else {
+        color = vec4(0.0, 0.0, blue, 1.0); // blue square background
     }
 
     imageStore(img, pixel, color);

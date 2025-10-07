@@ -217,13 +217,13 @@ fn get_voxel_images_and_sets(
     descriptor_set_allocator: Arc<StandardDescriptorSetAllocator>,
     render_pipeline: &ComputePipeline,
     queue: &Arc<Queue>,
-    voxels: Vec<u128>,
+    voxels: Vec<u32>,
 ) -> Arc<DescriptorSet> {
     let image = Image::new(
         memory_allocator.clone(),
         ImageCreateInfo {
             image_type: ImageType::Dim3d,
-            format: Format::R32G32B32A32_UINT,
+            format: Format::R8G8B8A8_UINT,
             extent: [4, 4, 4],
             usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
             ..Default::default()
@@ -608,8 +608,14 @@ impl ApplicationHandler for App {
         );
 
         let voxel_set = {
-            let mut voxels: Vec<u128> = [0; 4 * 4 * 4].to_vec();
-            voxels[0] = 255;
+            let mut voxels: Vec<u32> = [0; 4 * 4 * 4].to_vec();
+            voxels[0] = 1;
+            voxels[1] = 0;
+            voxels[2] = 1;
+            voxels[4] = 1;
+            voxels[5] = 1;
+            voxels[6] = 0;
+            voxels[7] = 1;
             get_voxel_images_and_sets(
                 self.memory_allocator.clone(),
                 self.command_buffer_allocator.clone(),
