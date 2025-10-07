@@ -211,6 +211,82 @@ fn get_images_and_sets(
     (render_image, render_set)
 }
 
+fn get_voxel_images_and_sets(
+    memory_allocator: Arc<StandardMemoryAllocator>,
+    command_buffer_allocator: Arc<StandardCommandBufferAllocator>,
+    descriptor_set_allocator: Arc<StandardDescriptorSetAllocator>,
+    render_pipeline: &ComputePipeline,
+    queue: &Arc<Queue>,
+    voxels: Vec<u128>,
+) -> Arc<DescriptorSet> {
+    let image = Image::new(
+        memory_allocator.clone(),
+        ImageCreateInfo {
+            image_type: ImageType::Dim3d,
+            format: Format::R32G32B32A32_UINT,
+            extent: [4, 4, 4],
+            usage: ImageUsage::STORAGE | ImageUsage::TRANSFER_DST,
+            ..Default::default()
+        },
+        AllocationCreateInfo::default(),
+    )
+    .unwrap();
+
+    let src_buffer = Buffer::from_iter(
+        memory_allocator.clone(),
+        BufferCreateInfo {
+            usage: BufferUsage::TRANSFER_SRC,
+            ..Default::default()
+        },
+        AllocationCreateInfo {
+            memory_type_filter: MemoryTypeFilter::PREFER_DEVICE
+                | MemoryTypeFilter::HOST_SEQUENTIAL_WRITE,
+            ..Default::default()
+        },
+        voxels,
+    )
+    .unwrap();
+
+    let mut command_buffer_builder = AutoCommandBufferBuilder::primary(
+        command_buffer_allocator.clone(),
+        queue.queue_family_index(),
+        CommandBufferUsage::OneTimeSubmit,
+    )
+    .unwrap();
+
+    command_buffer_builder
+        .clear_color_image(ClearColorImageInfo::image(image.clone()))
+        .unwrap()
+        .copy_buffer_to_image(CopyBufferToImageInfo::buffer_image(
+            src_buffer,
+            image.clone(),
+        ))
+        .unwrap();
+
+    let _ = command_buffer_builder
+        .build()
+        .unwrap()
+        .execute(queue.clone())
+        .unwrap();
+
+    let image_view =
+        ImageView::new(image.clone(), ImageViewCreateInfo::from_image(&image)).unwrap();
+
+    let layout = render_pipeline
+        .layout()
+        .set_layouts()
+        .get(1)
+        .unwrap()
+        .clone();
+    DescriptorSet::new(
+        descriptor_set_allocator.clone(),
+        layout.clone(),
+        [WriteDescriptorSet::image_view(0, image_view)],
+        [],
+    )
+    .unwrap()
+}
+
 struct App {
     instance: Arc<Instance>,
     device: Arc<Device>,
@@ -233,6 +309,7 @@ struct RenderContext {
 
     render_image: Arc<Image>,
     render_set: Arc<DescriptorSet>,
+    voxel_set: Arc<DescriptorSet>,
     gui: Gui,
 
     recreate_swapchain: bool,
@@ -425,14 +502,23 @@ impl App {
         )
         .unwrap();
 
+        #[derive(BufferContents)]
+        #[repr(C)]
+        struct PushConstants {
+            radius: f32,
+        }
+        let push_constants = PushConstants { radius: 0.25 };
+
         builder
             .bind_pipeline_compute(self.pipeline.clone())
+            .unwrap()
+            .push_constants(self.pipeline.layout().clone(), 0, push_constants)
             .unwrap()
             .bind_descriptor_sets(
                 PipelineBindPoint::Compute,
                 self.pipeline.layout().clone(),
                 0,
-                vec![rcx.render_set.clone()],
+                vec![rcx.render_set.clone(), rcx.voxel_set.clone()],
             )
             .unwrap();
 
@@ -521,6 +607,19 @@ impl ApplicationHandler for App {
             window_extent,
         );
 
+        let voxel_set = {
+            let mut voxels: Vec<u128> = [0; 4 * 4 * 4].to_vec();
+            voxels[0] = 255;
+            get_voxel_images_and_sets(
+                self.memory_allocator.clone(),
+                self.command_buffer_allocator.clone(),
+                self.descriptor_set_allocator.clone(),
+                &self.pipeline,
+                &self.queue,
+                voxels,
+            )
+        };
+
         let gui = Gui::new(
             event_loop,
             surface,
@@ -541,7 +640,7 @@ impl ApplicationHandler for App {
 
             render_image,
             render_set,
-
+            voxel_set,
             gui,
 
             recreate_swapchain,
