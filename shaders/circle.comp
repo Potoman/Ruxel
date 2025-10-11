@@ -19,6 +19,187 @@ bool is_collide(float x, float y) {
     return bool(texel.r != 0);
 }
 
+const int COLLIDE_YES = 0;
+const int COLLIDE_NO = 1;
+const int COLLIDE_OUT_OF_VOXEL = 2;
+const int COLLIDE_ERROR = 3;
+
+
+/// @return : collision result :
+/// - COLLIDE_YES : collide;
+/// - COLLIDE_NO : not collide;
+/// - COLLIDE_OUT_OF_VOXEL : out of 3d shape.
+int get_voxel_content(float x, float y, float z) {
+    if (x >= 0.0 && x <= 4.0 && y >= 0.0 && y <= 4.0 && z >= 0.0 && z <= 4.0) {
+        int vx = int(x / 1.0);
+        int vy = int(y / 1.0);
+        int vz = int(z / 1.0);
+
+        ivec3 texel_coord = ivec3(vx, vy, 0);
+        uvec4 texel = imageLoad(voxelImage, texel_coord);
+
+        if (texel.r != 0) {
+            return COLLIDE_YES;
+        } else {
+            return COLLIDE_NO;
+        }
+    }
+    else {
+        return COLLIDE_OUT_OF_VOXEL;
+    }
+}
+
+float ceil_or_plus_1(float value) {
+    if (mod(value, 1.0) == 0.0) {
+        return value + 1.0;
+    } else {
+        return ceil(value);
+    }
+}
+
+vec3 get_coord_from_x(vec3 camera_position, vec3 ray_direction, float x) {
+    float dx = ray_direction[0];
+    float dy = ray_direction[1];
+    float dz = ray_direction[2];
+    float cx = camera_position[0];
+    float cy = camera_position[1];
+    float cz = camera_position[2];
+    float t = (x - cx) / dx;
+    float y = cy + dy * t;
+    float z = cz + dz * t;
+    return vec3(x, y, z);
+}
+
+vec3 get_coord_from_y(vec3 camera_position, vec3 ray_direction, float y) {
+    float dx = ray_direction[0];
+    float dy = ray_direction[1];
+    float dz = ray_direction[2];
+    float cx = camera_position[0];
+    float cy = camera_position[1];
+    float cz = camera_position[2];
+    float t = (y - cy) / dy;
+    float x = cx + dx * t;
+    float z = cz + dz * t;
+    return vec3(x, y, z);
+}
+
+vec3 get_coord_from_z(vec3 camera_position, vec3 ray_direction, float z) {
+    float dx = ray_direction[0];
+    float dy = ray_direction[1];
+    float dz = ray_direction[2];
+    float cx = camera_position[0];
+    float cy = camera_position[1];
+    float cz = camera_position[2];
+    float t = (z - cz) / dz;
+    float x = cx + dx * t;
+    float y = cy + dy * t;
+    return vec3(x, y, z);
+}
+
+float sum(vec3 v) {
+    return v.x + v.y + v.z;
+}
+
+void closest_point(vec3 xyz,
+                   vec3 x_collide,
+                   vec3 y_collide,
+                   vec3 z_collide,
+                   out vec3 xyz_collide,
+                   out int who_colide) {
+    float dist_x =  dot(xyz - x_collide, xyz - x_collide);
+    float dist_y =  dot(xyz - y_collide, xyz - y_collide);
+    float dist_z =  dot(xyz - z_collide, xyz - z_collide);
+    if (dist_x < dist_y) {
+        if (dist_x < dist_z) {
+            who_colide = 0;
+            xyz_collide = x_collide;
+        } else {
+            who_colide = 2;
+            xyz_collide = z_collide;
+        }
+    } else {
+        if (dist_y < dist_z) {
+            who_colide = 1;
+            xyz_collide = y_collide;
+        } else {
+            who_colide = 2;
+            xyz_collide = z_collide;
+        }
+    }
+}
+
+/// @return : collision result :
+/// - COLLIDE_YES : collide;
+/// - COLLIDE_NO : not collide;
+/// - COLLIDE_OUT_OF_VOXEL : out of 3d shape.
+int is_collide_3d(vec3 camera_position, vec3 ray_direction) {
+
+    // line equation :
+    // x = origin_cube.x + dx * t
+    // y = origin_cube.y + dy * t
+    // z = origin_cube.z + dz * t
+
+    vec3 z_collide = get_coord_from_z(camera_position, ray_direction, 0);
+    float x = z_collide[0];
+    float y = z_collide[1];
+    float z = z_collide[2];
+    float next_x = ceil_or_plus_1(x);
+    float next_y = ceil_or_plus_1(y);
+    vec3 x_collide = get_coord_from_x(camera_position, ray_direction, next_x);
+    vec3 y_collide = get_coord_from_y(camera_position, ray_direction, next_y);
+
+    int who_colide = 2; // mean x collide. 1 if y collide, otherwise 2.
+
+    vec3 xyz = z_collide;
+
+    while (true) {
+        float x = xyz[0];
+        float y = xyz[1];
+        float z = xyz[2];
+        int is_line_collide = get_voxel_content(x, y, z);
+        switch (is_line_collide) {
+            case COLLIDE_YES:
+                return COLLIDE_YES;
+            case COLLIDE_NO:
+                switch (who_colide) {
+                    case 0:
+                        float next_x = ceil_or_plus_1(x);
+                        x_collide = get_coord_from_x(camera_position, ray_direction, next_x);
+                        break;
+                    case 1:
+                        float next_y = ceil_or_plus_1(y);
+                        y_collide = get_coord_from_y(camera_position, ray_direction, next_y);
+                        break;
+                    case 2:
+                        float next_z = ceil_or_plus_1(z);
+                        z_collide = get_coord_from_z(camera_position, ray_direction, next_z);
+                        break;
+                    default:
+                        return COLLIDE_ERROR;
+                }
+                break;
+            case COLLIDE_OUT_OF_VOXEL:
+                return COLLIDE_OUT_OF_VOXEL;
+            default:
+                return COLLIDE_ERROR;
+        }
+        // Now prepare next xyz :
+        vec3 tmp_xyz = xyz;
+        closest_point(tmp_xyz, x_collide, y_collide, z_collide, xyz, who_colide);
+    }
+}
+
+/// @param xy : Valute between 0.0 and 1.0;
+/// @return : collision result :
+/// - 0 : collide;
+/// - 1 : not collide;
+/// - 2 : out of 3d shape.
+int is_collide_camera_to_ray(vec3 camera_position, vec3 camera_direction, vec2 xy) {
+    // Here we compute the camera_direction
+    vec3 ray_direction = camera_direction + vec3((xy - 0.5) * 2.0, 0.0);
+    return is_collide_3d(camera_position, ray_direction);
+}
+
 void main() {
     ivec2 size = imageSize(img);
     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
@@ -43,10 +224,47 @@ void main() {
         blue = 0.0;
     }
 
+    //int x = min(int(uv[0] * 4.0), 3);
+    //int y = min(int(uv[1] * 4.0), 3);
+    //switch (get_voxel_content(x, y, 0)) {
+    //    case COLLIDE_YES:
+    //        color = vec4(1.0, 0.0, 0.0, 1.0);
+    //        break;
+    //    case COLLIDE_NO:
+    //        color = vec4(0.0, 1.0, 0.0, 1.0);
+    //        break;
+    //    case COLLIDE_OUT_OF_VOXEL:
+    //        color = vec4(0.0, 0.0, 1.0, 1.0);
+    //        break;
+    //    default:
+    //        color = vec4(0.0, 1.0, 1.0, 1.0);
+    //        break;
+    //}
+    //imageStore(img, pixel, color);
+    //return;
+
     if (is_collide(uv[0], uv[1])) {
         color = vec4(1.0, 0.0, blue, 1.0); // blue square background
     } else {
         color = vec4(0.0, 0.0, blue, 1.0); // blue square background
+    }
+
+    switch (is_collide_camera_to_ray(vec3(0.0, 0.0, -5.0), vec3(0.0, 0.0, 1.0), uv)) {
+        case COLLIDE_YES:
+            color = vec4(1.0, 0.0, 0.0, 1.0);
+            break;
+        case COLLIDE_NO:
+            color = vec4(0.0, 1.0, 0.0, 1.0);
+            break;
+        case COLLIDE_OUT_OF_VOXEL:
+            color = vec4(0.0, 0.0, 1.0, 1.0);
+            break;
+        case COLLIDE_ERROR:
+            color = vec4(0.0, 1.0, 1.0, 1.0);
+            break;
+        default:
+            color = vec4(1.0, 1.0, 1.0, 1.0);
+            break;
     }
 
     imageStore(img, pixel, color);

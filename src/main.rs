@@ -512,8 +512,8 @@ impl App {
         builder
             .bind_pipeline_compute(self.pipeline.clone())
             .unwrap()
-            .push_constants(self.pipeline.layout().clone(), 0, push_constants)
-            .unwrap()
+            //.push_constants(self.pipeline.layout().clone(), 0, push_constants)
+            //.unwrap()
             .bind_descriptor_sets(
                 PipelineBindPoint::Compute,
                 self.pipeline.layout().clone(),
@@ -611,11 +611,21 @@ impl ApplicationHandler for App {
             let mut voxels: Vec<u32> = [0; 4 * 4 * 4].to_vec();
             voxels[0] = 1;
             voxels[1] = 0;
-            voxels[2] = 1;
-            voxels[4] = 1;
+            voxels[2] = 0;
+            voxels[3] = 0;
+            voxels[4] = 0;
             voxels[5] = 1;
             voxels[6] = 0;
-            voxels[7] = 1;
+            voxels[7] = 0;
+            voxels[8] = 0;
+            voxels[9] = 0;
+            voxels[10] = 0;
+            voxels[11] = 0;
+            voxels[12] = 1;
+            voxels[13] = 0;
+            voxels[14] = 0;
+            voxels[15] = 1;
+            voxels[26] = 1;
             get_voxel_images_and_sets(
                 self.memory_allocator.clone(),
                 self.command_buffer_allocator.clone(),
