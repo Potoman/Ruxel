@@ -612,20 +612,20 @@ impl ApplicationHandler for App {
             voxels[0] = 1;
             voxels[1] = 0;
             voxels[2] = 0;
-            voxels[3] = 0;
+            voxels[3] = 1;
             voxels[4] = 0;
             voxels[5] = 1;
             voxels[6] = 0;
             voxels[7] = 0;
             voxels[8] = 0;
             voxels[9] = 0;
-            voxels[10] = 0;
+            voxels[10] = 1;
             voxels[11] = 0;
             voxels[12] = 1;
             voxels[13] = 0;
             voxels[14] = 0;
             voxels[15] = 1;
-            voxels[26] = 1;
+            voxels[26] = 0;
             get_voxel_images_and_sets(
                 self.memory_allocator.clone(),
                 self.command_buffer_allocator.clone(),
