@@ -35,7 +35,7 @@ int get_voxel_content(float x, float y, float z, out int color) {
         int vy = int(y / 1.0);
         int vz = int(z / 1.0);
 
-        ivec3 texel_coord = ivec3(vx, vy, 0);
+        ivec3 texel_coord = ivec3(vx, vy, vz);
         uvec4 texel = imageLoad(voxelImage, texel_coord);
 
         if (texel.r != 0) {
