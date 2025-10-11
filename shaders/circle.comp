@@ -39,7 +39,7 @@ int get_voxel_content(float x, float y, float z, out int color) {
         uvec4 texel = imageLoad(voxelImage, texel_coord);
 
         if (texel.r != 0) {
-            color = int(x);
+            color = int(z);
             return COLLIDE_YES;
         } else {
             return COLLIDE_NO;
