@@ -300,6 +300,10 @@ struct App {
 
     input: WinitInputHelper,
     rcx: Option<RenderContext>,
+
+    offset_x: f32,
+    offset_y: f32,
+    offset_z: f32,
 }
 
 struct RenderContext {
@@ -419,6 +423,10 @@ impl App {
 
             input,
             rcx: None,
+
+            offset_x: 0.0,
+            offset_y: 0.0,
+            offset_z: 0.0,
         }
     }
 
@@ -509,11 +517,24 @@ impl App {
         }
         let push_constants = PushConstants { radius: 0.25 };
 
+        #[derive(BufferContents)]
+        #[repr(C)]
+        struct PushOffsetConstants {
+            offset_x: f32,
+            offset_y: f32,
+            offset_z: f32,
+        }
+        let push_offset = PushOffsetConstants {
+            offset_x: self.offset_x,
+            offset_y: self.offset_y,
+            offset_z: self.offset_z,
+        };
+
         builder
             .bind_pipeline_compute(self.pipeline.clone())
             .unwrap()
-            //.push_constants(self.pipeline.layout().clone(), 0, push_constants)
-            //.unwrap()
+            .push_constants(self.pipeline.layout().clone(), 0, push_offset)
+            .unwrap()
             .bind_descriptor_sets(
                 PipelineBindPoint::Compute,
                 self.pipeline.layout().clone(),
@@ -577,6 +598,34 @@ impl App {
             .unwrap()
             .wait(None)
             .unwrap();
+    }
+
+    fn update(&mut self, event_loop: &ActiveEventLoop) {
+        if self.input.close_requested() {
+            event_loop.exit();
+            return;
+        }
+        if self.input.key_pressed(KeyCode::KeyW) {
+            self.offset_y += 0.1;
+        }
+        if self.input.key_pressed(KeyCode::KeyS) {
+            self.offset_y -= 0.1;
+        }
+        if self.input.key_pressed(KeyCode::KeyA) {
+            self.offset_x += 0.1;
+        }
+        if self.input.key_pressed(KeyCode::KeyD) {
+            self.offset_x -= 0.1;
+        }
+        if self.input.key_pressed(KeyCode::KeyQ) {
+            self.offset_z += 0.1;
+        }
+        if self.input.key_pressed(KeyCode::KeyE) {
+            self.offset_z -= 0.1;
+        }
+        if self.input.mouse_pressed(MouseButton::Left) {
+            println!("mouse_pressed");
+        }
     }
 }
 
@@ -696,11 +745,7 @@ impl ApplicationHandler for App {
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.input.end_step();
-
-        if self.input.close_requested() {
-            event_loop.exit();
-            return;
-        }
+        self.update(event_loop);
 
         let rcx = self.rcx.as_mut().unwrap();
         rcx.window.request_redraw();
