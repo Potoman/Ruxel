@@ -116,24 +116,24 @@ void closest_point(in vec3 xyz,
                    in vec3 y_collide,
                    in vec3 z_collide,
                    out vec3 xyz_collide,
-                   out int who_colide) {
+                   out int who_collide) {
     float dist_x =  dot(xyz - x_collide, xyz - x_collide);
     float dist_y =  dot(xyz - y_collide, xyz - y_collide);
     float dist_z =  dot(xyz - z_collide, xyz - z_collide);
     if (dist_x < dist_y) {
         if (dist_x < dist_z) {
-            who_colide = 0;
+            who_collide = 0;
             xyz_collide = x_collide;
         } else {
-            who_colide = 2;
+            who_collide = 2;
             xyz_collide = z_collide;
         }
     } else {
         if (dist_y < dist_z) {
-            who_colide = 1;
+            who_collide = 1;
             xyz_collide = y_collide;
         } else {
-            who_colide = 2;
+            who_collide = 2;
             xyz_collide = z_collide;
         }
     }
@@ -167,9 +167,9 @@ int is_collide_3d(vec3 camera_position, vec3 ray_direction, out int color) {
     vec3 collide_point = camera_position;
     int count = 0;
     while (true) {
-        int who_colide = 0; // mean x collide. 1 if y collide, otherwise 2.
+        int who_collide = 0; // mean x collide. 1 if y collide, otherwise 2.
         vec3 tmp_collide_point = collide_point;
-        closest_point(tmp_collide_point, x_collide, y_collide, z_collide, collide_point, who_colide);
+        closest_point(tmp_collide_point, x_collide, y_collide, z_collide, collide_point, who_collide);
 
         int is_line_collide = get_voxel_content(collide_point, color);
         switch (is_line_collide) {
@@ -188,7 +188,7 @@ int is_collide_3d(vec3 camera_position, vec3 ray_direction, out int color) {
         }
 
         // Move collide point :
-        switch (who_colide) {
+        switch (who_collide) {
             case 0:
                 float next_x = ceil_or_plus_1(collide_point[0]);
                 x_collide = get_coord_from_x(camera_position, ray_direction, next_x);
