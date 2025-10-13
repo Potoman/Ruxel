@@ -4,7 +4,7 @@ use egui_winit_vulkano::{
     egui::{self, Color32},
 };
 use image::{ImageBuffer, Rgba};
-use nalgebra::{Matrix4, Vector3, Vector4};
+use nalgebra::{Matrix4, Rotation3, Unit, Vector3, Vector4};
 use std::path::PathBuf;
 use std::{
     f64::consts::{FRAC_PI_2, TAU},
@@ -301,9 +301,10 @@ struct App {
     input: WinitInputHelper,
     rcx: Option<RenderContext>,
 
-    offset_x: f32,
-    offset_y: f32,
-    offset_z: f32,
+    camera_position: Vector3<f32>,
+    camera_direction: Vector3<f32>,
+
+    is_grab: bool,
 }
 
 struct RenderContext {
@@ -424,9 +425,10 @@ impl App {
             input,
             rcx: None,
 
-            offset_x: 0.0,
-            offset_y: 0.0,
-            offset_z: 0.0,
+            camera_position: Vector3::new(-5.0, 0.0, 0.0),
+            camera_direction: Vector3::new(1.0, 0.0, 0.0),
+
+            is_grab: false,
         }
     }
 
@@ -512,22 +514,21 @@ impl App {
 
         #[derive(BufferContents)]
         #[repr(C)]
-        struct PushConstants {
-            radius: f32,
-        }
-        let push_constants = PushConstants { radius: 0.25 };
-
-        #[derive(BufferContents)]
-        #[repr(C)]
         struct PushOffsetConstants {
-            offset_x: f32,
-            offset_y: f32,
-            offset_z: f32,
+            camera_position_x: f32,
+            camera_position_y: f32,
+            camera_position_z: f32,
+            camera_direction_x: f32,
+            camera_direction_y: f32,
+            camera_direction_z: f32,
         }
         let push_offset = PushOffsetConstants {
-            offset_x: self.offset_x,
-            offset_y: self.offset_y,
-            offset_z: self.offset_z,
+            camera_position_x: self.camera_position.x,
+            camera_position_y: self.camera_position.y,
+            camera_position_z: self.camera_position.z,
+            camera_direction_x: self.camera_direction.x,
+            camera_direction_y: self.camera_direction.y,
+            camera_direction_z: self.camera_direction.z,
         };
 
         builder
@@ -605,26 +606,53 @@ impl App {
             event_loop.exit();
             return;
         }
-        if self.input.key_pressed(KeyCode::KeyW) {
-            self.offset_y += 0.1;
+        if self.input.key_pressed(KeyCode::KeyW) || self.input.key_held(KeyCode::KeyW) {
+            self.camera_position = self.camera_position + self.camera_direction * 0.1;
         }
-        if self.input.key_pressed(KeyCode::KeyS) {
-            self.offset_y -= 0.1;
+        if self.input.key_pressed(KeyCode::KeyS) || self.input.key_held(KeyCode::KeyS) {
+            self.camera_position = self.camera_position - self.camera_direction * 0.1;
         }
-        if self.input.key_pressed(KeyCode::KeyA) {
-            self.offset_x += 0.1;
+        if self.input.key_pressed(KeyCode::KeyA) || self.input.key_held(KeyCode::KeyA) {
+            let top = Vector3::new(0.0, 0.0, 1.0);
+            let dir = self.camera_position.cross(&top).normalize();
+            self.camera_position -= dir * 0.1;
         }
-        if self.input.key_pressed(KeyCode::KeyD) {
-            self.offset_x -= 0.1;
+        if self.input.key_pressed(KeyCode::KeyD) || self.input.key_held(KeyCode::KeyD) {
+            let top = Vector3::new(0.0, 0.0, 1.0);
+            let dir = self.camera_position.cross(&top).normalize();
+            self.camera_position += dir * 0.1;
         }
-        if self.input.key_pressed(KeyCode::KeyQ) {
-            self.offset_z += 0.1;
+        if self.input.key_pressed(KeyCode::KeyQ) || self.input.key_held(KeyCode::KeyQ) {
+            self.camera_position.z -= 0.1;
         }
-        if self.input.key_pressed(KeyCode::KeyE) {
-            self.offset_z -= 0.1;
+        if self.input.key_pressed(KeyCode::KeyE) || self.input.key_held(KeyCode::KeyE) {
+            self.camera_position.z += 0.1;
         }
         if self.input.mouse_pressed(MouseButton::Left) {
             println!("mouse_pressed");
+            self.is_grab = true;
+        }
+        if self.input.mouse_released(MouseButton::Left) {
+            println!("mouse_released");
+            self.is_grab = false;
+        }
+
+        if self.is_grab {
+            let (dx, dy) = self.input.mouse_diff();
+            // 700 -> 90 degres
+            println!("mouse diff : {} {}", dx, dy);
+            let rot_yaw: f32 = (90.0 * dx / 700.0).to_radians();
+            let rot_pitch: f32 = (45.0 * dy / 700.0).to_radians();
+
+            self.camera_direction =
+                Rotation3::from_axis_angle(&Vector3::z_axis(), -rot_yaw) * self.camera_direction;
+
+            let top = Vector3::new(0.0, 0.0, 1.0);
+            let axis_pitch = self.camera_position.cross(&top).normalize();
+
+            let axis_pitch_unit = Unit::new_normalize(axis_pitch);
+            self.camera_direction =
+                Rotation3::from_axis_angle(&axis_pitch_unit, rot_pitch) * self.camera_direction;
         }
     }
 }
