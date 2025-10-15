@@ -7,7 +7,7 @@ use image::{ImageBuffer, Rgba};
 use nalgebra::{Matrix4, Rotation3, Unit, Vector3, Vector4};
 use std::path::PathBuf;
 use std::{
-    f64::consts::{FRAC_PI_2, TAU},
+    f32::consts::{FRAC_PI_2, TAU},
     fs::File,
     io::Read,
     path::Path,
@@ -303,6 +303,8 @@ struct App {
 
     camera_position: Vector3<f32>,
     camera_direction: Vector3<f32>,
+    camera_pitch: f32,
+    camera_yaw: f32,
 
     is_grab: bool,
 }
@@ -427,6 +429,8 @@ impl App {
 
             camera_position: Vector3::new(-5.0, 0.0, 0.0),
             camera_direction: Vector3::new(1.0, 0.0, 0.0),
+            camera_pitch: 0.0,
+            camera_yaw: 0.0,
 
             is_grab: false,
         }
@@ -641,18 +645,20 @@ impl App {
             let (dx, dy) = self.input.mouse_diff();
             // 700 -> 90 degres
             println!("mouse diff : {} {}", dx, dy);
-            let rot_yaw: f32 = (90.0 * dx / 700.0).to_radians();
-            let rot_pitch: f32 = (45.0 * dy / 700.0).to_radians();
+            let rot_yaw: f32 = (45.0 * dx / 700.0).to_radians();
+            let rot_pitch: f32 = (-60.0 * dy / 700.0).to_radians();
+            self.camera_yaw = self.camera_yaw + rot_yaw;
+            self.camera_pitch = (self.camera_pitch + rot_pitch).clamp(-FRAC_PI_2, FRAC_PI_2);
 
+            let camera_direction = Vector3::new(1.0, 0.0, 0.0);
             self.camera_direction =
-                Rotation3::from_axis_angle(&Vector3::z_axis(), -rot_yaw) * self.camera_direction;
+                Rotation3::from_axis_angle(&Vector3::z_axis(), -self.camera_yaw) * camera_direction;
 
             let top = Vector3::new(0.0, 0.0, 1.0);
             let axis_pitch = self.camera_position.cross(&top).normalize();
-
             let axis_pitch_unit = Unit::new_normalize(axis_pitch);
-            self.camera_direction =
-                Rotation3::from_axis_angle(&axis_pitch_unit, rot_pitch) * self.camera_direction;
+            self.camera_direction = Rotation3::from_axis_angle(&axis_pitch_unit, self.camera_pitch)
+                * self.camera_direction;
         }
     }
 }
