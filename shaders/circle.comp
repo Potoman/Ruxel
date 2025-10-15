@@ -203,7 +203,7 @@ int is_collide_3d(vec3 camera_position, vec3 ray_direction, out int color) {
             case COLLIDE_NO:
                 break;
             case COLLIDE_OUT_OF_VOXEL:
-                count = count + 1;
+                count += 1;
                 if (count >= 100) {
                     return COLLIDE_OUT_OF_VOXEL;
                 }
