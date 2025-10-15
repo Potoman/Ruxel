@@ -614,13 +614,13 @@ impl App {
         }
         if self.input.key_pressed(KeyCode::KeyA) || self.input.key_held(KeyCode::KeyA) {
             let top = Vector3::new(0.0, 0.0, 1.0);
-            let dir = self.camera_position.cross(&top).normalize();
-            self.camera_position -= dir * 0.1;
+            let dir = self.camera_direction.cross(&top).normalize();
+            self.camera_position += dir * 0.1;
         }
         if self.input.key_pressed(KeyCode::KeyD) || self.input.key_held(KeyCode::KeyD) {
             let top = Vector3::new(0.0, 0.0, 1.0);
-            let dir = self.camera_position.cross(&top).normalize();
-            self.camera_position += dir * 0.1;
+            let dir = self.camera_direction.cross(&top).normalize();
+            self.camera_position -= dir * 0.1;
         }
         if self.input.key_pressed(KeyCode::KeyQ) || self.input.key_held(KeyCode::KeyQ) {
             self.camera_position.z -= 0.1;
