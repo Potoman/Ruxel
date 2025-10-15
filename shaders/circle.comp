@@ -34,16 +34,36 @@ const int COLLIDE_ERROR = 3;
 /// - COLLIDE_YES : collide;
 /// - COLLIDE_NO : not collide;
 /// - COLLIDE_OUT_OF_VOXEL : out of 3d shape.
-int get_voxel_content(vec3 collide_point, out int color) {
+int get_voxel_content(vec3 collide_point, vec3 ray_direction, out int color) {
     float x = collide_point[0];
     float y = collide_point[1];
     float z = collide_point[2];
-    if (x >= 0.0 && x <= 4.0 && y >= 0.0 && y <= 4.0 && z >= 0.0 && z <= 4.0) {
-        int vx = int(x / 1.0);
-        int vy = int(y / 1.0);
-        int vz = int(z / 1.0);
 
-        ivec3 texel_coord = ivec3(vx, vy, vz);
+    int x_index = int(floor(x));
+    int y_index = int(floor(y));
+    int z_index = int(floor(z));
+
+    if (mod(x, 1.0) == 0.0) {
+        // Collide on x plan.
+        if (ray_direction.x < 0.0) {
+            x_index -= 1;
+        }
+    }
+    if (mod(y, 1.0) == 0.0) {
+        // Collide on x plan.
+        if (ray_direction.y < 0.0) {
+            y_index -= 1;
+        }
+    }
+    if (mod(z, 1.0) == 0.0) {
+        // Collide on x plan.
+        if (ray_direction.z < 0.0) {
+            z_index -= 1;
+        }
+    }
+
+    if (x_index >= 0 && x_index < 4 && y_index >= 0 && y_index < 4 && z_index >= 0 && z_index < 4) {
+        ivec3 texel_coord = ivec3(x_index, y_index, z_index);
         uvec4 texel = imageLoad(voxelImage, texel_coord);
 
         if (texel.r != 0) {
@@ -176,7 +196,7 @@ int is_collide_3d(vec3 camera_position, vec3 ray_direction, out int color) {
         vec3 tmp_collide_point = collide_point;
         closest_point(tmp_collide_point, x_collide, y_collide, z_collide, collide_point, who_collide);
 
-        int is_line_collide = get_voxel_content(collide_point, color);
+        int is_line_collide = get_voxel_content(collide_point, ray_direction, color);
         switch (is_line_collide) {
             case COLLIDE_YES:
                 return COLLIDE_YES;
@@ -195,15 +215,15 @@ int is_collide_3d(vec3 camera_position, vec3 ray_direction, out int color) {
         // Move collide point :
         switch (who_collide) {
             case 0:
-                float next_x = ceil_or_plus_1(collide_point[0]);
+                float next_x = get_next_axe_value(collide_point[0], ray_direction.x);
                 x_collide = get_coord_from_x(camera_position, ray_direction, next_x);
                 break;
             case 1:
-                float next_y = ceil_or_plus_1(collide_point[1]);
+                float next_y = get_next_axe_value(collide_point[1], ray_direction.y);
                 y_collide = get_coord_from_y(camera_position, ray_direction, next_y);
                 break;
             case 2:
-                float next_z = ceil_or_plus_1(collide_point[2]);
+                float next_z = get_next_axe_value(collide_point[2], ray_direction.z);
                 z_collide = get_coord_from_z(camera_position, ray_direction, next_z);
                 break;
             default:
